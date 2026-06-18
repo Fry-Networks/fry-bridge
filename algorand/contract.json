@@ -1,0 +1,173 @@
+{
+  "name": "fry_bridge_algorand",
+  "methods": [
+    {
+      "name": "initialize",
+      "args": [
+        {
+          "type": "address",
+          "name": "relayer"
+        },
+        {
+          "type": "uint64",
+          "name": "fsol_asa_id"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Initialize bridge state. Callable once by authority."
+    },
+    {
+      "name": "set_limits",
+      "args": [
+        {
+          "type": "uint64",
+          "name": "per_tx_limit"
+        },
+        {
+          "type": "uint64",
+          "name": "hourly_limit"
+        },
+        {
+          "type": "uint64",
+          "name": "daily_limit"
+        },
+        {
+          "type": "uint64",
+          "name": "time_lock_threshold"
+        },
+        {
+          "type": "uint64",
+          "name": "time_lock_duration"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Set rate limits and time-lock params. Authority only."
+    },
+    {
+      "name": "set_relayer",
+      "args": [
+        {
+          "type": "address",
+          "name": "new_relayer"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Change relayer address. Authority only."
+    },
+    {
+      "name": "pause",
+      "args": [],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Pause bridge operations. Authority only."
+    },
+    {
+      "name": "unpause",
+      "args": [],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Unpause bridge operations. Authority only."
+    },
+    {
+      "name": "deposit_asa",
+      "args": [
+        {
+          "type": "uint64",
+          "name": "asa_id"
+        },
+        {
+          "type": "uint64",
+          "name": "nonce"
+        },
+        {
+          "type": "uint64",
+          "name": "amount"
+        },
+        {
+          "type": "address",
+          "name": "solana_recipient"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Deposit ASA and create a lock record."
+    },
+    {
+      "name": "burn_fsol",
+      "args": [
+        {
+          "type": "uint64",
+          "name": "nonce"
+        },
+        {
+          "type": "uint64",
+          "name": "amount"
+        },
+        {
+          "type": "address",
+          "name": "solana_recipient"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Burn fSOL and create a lock record."
+    },
+    {
+      "name": "mint_fsol",
+      "args": [
+        {
+          "type": "address",
+          "name": "recipient"
+        },
+        {
+          "type": "uint64",
+          "name": "nonce"
+        },
+        {
+          "type": "uint64",
+          "name": "amount"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Relayer mints fSOL to recipient."
+    },
+    {
+      "name": "release_asa",
+      "args": [
+        {
+          "type": "address",
+          "name": "recipient"
+        },
+        {
+          "type": "uint64",
+          "name": "asa_id"
+        },
+        {
+          "type": "uint64",
+          "name": "nonce"
+        },
+        {
+          "type": "uint64",
+          "name": "amount"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Relayer releases ASA to recipient."
+    }
+  ],
+  "networks": {}
+}

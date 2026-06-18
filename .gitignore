@@ -1,0 +1,44 @@
+# Secrets
+.env
+*.env
+*.keypair.json
+*.pem
+*.mnemonic
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Anchor
+anchor/target/
+anchor/.anchor/
+anchor/Cargo.lock
+anchor/tests/
+
+# Algorand
+algorand/__pycache__/
+algorand/*.teal
+algorand/contract.json
+!algorand/approval.teal
+!algorand/clear.teal
+!algorand/contract.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+data/
