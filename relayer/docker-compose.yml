@@ -8,6 +8,7 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./config:/app/config
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8090/health"]

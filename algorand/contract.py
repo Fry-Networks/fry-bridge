@@ -84,7 +84,7 @@ def lock_record_key(user_addr: Expr, nonce: Expr) -> Expr:
 router = Router(
     "fry_bridge_algorand",
     BareCallActions(
-        no_op=OnCompleteAction.call_only(
+        no_op=OnCompleteAction.create_only(
             Seq([
                 App.globalPut(Bytes("authority"), Txn.sender()),
                 App.globalPut(Bytes("relayer"), Txn.sender()),
@@ -156,6 +156,25 @@ def set_limits(
         App.globalPut(Bytes("daily_limit"), dl),
         App.globalPut(Bytes("time_lock_threshold"), tlt),
         App.globalPut(Bytes("time_lock_duration"), tld),
+        Approve(),
+    ])
+
+
+@router.method
+def optin_asa(asa_id: abi.Uint64):
+    """Opt app into ASA. Authority only."""
+    a = asa_id.get()
+    return Seq([
+        assert_authority(),
+        InnerTxnBuilder.Begin(),
+        InnerTxnBuilder.SetFields({
+            TxnField.type_enum: TxnType.AssetTransfer,
+            TxnField.xfer_asset: a,
+            TxnField.asset_amount: Int(0),
+            TxnField.asset_receiver: Global.current_application_address(),
+            TxnField.fee: Global.min_txn_fee(),
+        }),
+        InnerTxnBuilder.Submit(),
         Approve(),
     ])
 
@@ -295,6 +314,7 @@ def mint_fsol(
     key = lock_record_key(r, n)
     record = Concat(
         r,
+        BytesZero(Int(32)),              # placeholder (matches deposit/burn layout)
         Itob(amt),
         Itob(fsol),
         Itob(n),
@@ -319,7 +339,7 @@ def mint_fsol(
             TxnField.asset_receiver: r,
             TxnField.asset_amount: amt,
             TxnField.xfer_asset: fsol,
-            TxnField.fee: Int(0),
+            TxnField.fee: Global.min_txn_fee(),
         }),
         InnerTxnBuilder.Submit(),
         Approve(),
@@ -342,6 +362,7 @@ def release_asa(
     key = lock_record_key(r, n)
     record = Concat(
         r,
+        BytesZero(Int(32)),              # placeholder (matches deposit/burn layout)
         Itob(amt),
         Itob(a),
         Itob(n),
@@ -366,7 +387,7 @@ def release_asa(
             TxnField.asset_receiver: r,
             TxnField.asset_amount: amt,
             TxnField.xfer_asset: a,
-            TxnField.fee: Int(0),
+            TxnField.fee: Global.min_txn_fee(),
         }),
         InnerTxnBuilder.Submit(),
         Approve(),

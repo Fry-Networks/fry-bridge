@@ -48,6 +48,19 @@
       "desc": "Set rate limits and time-lock params. Authority only."
     },
     {
+      "name": "optin_asa",
+      "args": [
+        {
+          "type": "uint64",
+          "name": "asa_id"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "desc": "Opt app into ASA. Authority only."
+    },
+    {
       "name": "set_relayer",
       "args": [
         {

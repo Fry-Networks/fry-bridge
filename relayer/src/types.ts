@@ -7,6 +7,8 @@ export interface BridgeEvent {
   tokenAddress: string;
   timestamp: number;
   timeLock?: number;
+  algorandRecipient?: string;
+  solanaRecipient?: string;
   status: 'pending' | 'processed' | 'failed';
   counterpartTxId?: string;
 }
@@ -16,6 +18,7 @@ export interface RelayerConfig {
   solanaProgramId: string;
   solanaKeypairPath: string;
   algodUrl: string;
+  algodToken: string;
   algoAppId: number;
   algoMnemonic: string;
   dbPath: string;

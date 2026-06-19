@@ -18,12 +18,17 @@ export function initDb(path: string): Database.Database {
       timeLock INTEGER,
       status TEXT NOT NULL,
       counterpartTxId TEXT,
+      algorandRecipient TEXT,
+      solanaRecipient TEXT,
       UNIQUE(nonce, chain, direction, userAddress)
     );
     CREATE INDEX IF NOT EXISTS idx_events_nonce ON processed_events(nonce);
     CREATE INDEX IF NOT EXISTS idx_events_chain ON processed_events(chain);
     CREATE INDEX IF NOT EXISTS idx_events_status ON processed_events(status);
-
+  `);
+  try { db.exec('ALTER TABLE processed_events ADD COLUMN algorandRecipient TEXT'); } catch {}
+  try { db.exec('ALTER TABLE processed_events ADD COLUMN solanaRecipient TEXT'); } catch {}
+  db.exec(`
     CREATE TABLE IF NOT EXISTS rate_limit_state (
       chain TEXT PRIMARY KEY,
       hourlyVolume TEXT NOT NULL,
@@ -38,14 +43,16 @@ export function initDb(path: string): Database.Database {
 export function upsertEvent(ev: BridgeEvent): void {
   const stmt = db.prepare(`
     INSERT INTO processed_events
-      (nonce, chain, direction, userAddress, amount, tokenAddress, timestamp, timeLock, status, counterpartTxId)
+      (nonce, chain, direction, userAddress, amount, tokenAddress, timestamp, timeLock, status, counterpartTxId, algorandRecipient, solanaRecipient)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(nonce, chain, direction, userAddress)
     DO UPDATE SET
       status = excluded.status,
       counterpartTxId = excluded.counterpartTxId,
-      timeLock = excluded.timeLock
+      timeLock = excluded.timeLock,
+      algorandRecipient = excluded.algorandRecipient,
+      solanaRecipient = excluded.solanaRecipient
   `);
   stmt.run(
     ev.nonce,
@@ -57,7 +64,9 @@ export function upsertEvent(ev: BridgeEvent): void {
     ev.timestamp,
     ev.timeLock ?? null,
     ev.status,
-    ev.counterpartTxId ?? null
+    ev.counterpartTxId ?? null,
+    ev.algorandRecipient ?? null,
+    ev.solanaRecipient ?? null
   );
 }
 
@@ -94,6 +103,8 @@ function toBridgeEvent(row: any): BridgeEvent {
     timeLock: row.timeLock ?? undefined,
     status: row.status,
     counterpartTxId: row.counterpartTxId ?? undefined,
+    algorandRecipient: row.algorandRecipient ?? undefined,
+    solanaRecipient: row.solanaRecipient ?? undefined,
   };
 }
 
