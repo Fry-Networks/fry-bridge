@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import algosdk from 'algosdk';
 import { initDb, upsertEvent, getPendingEvents } from './db';
 import { config } from './config';
 import { BridgeEvent } from './types';
@@ -30,12 +31,12 @@ async function executeCounterpart(ev: BridgeEvent): Promise<string | undefined> 
   const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
   if (ev.chain === 'solana' && ev.direction === 'lock') {
-    const recip = ev.userAddress; // prototype: treat user as recipient
-    if (ev.tokenAddress === SOL_MINT || ev.tokenAddress === '') {
-      return await algorand.executeMintFsol(recip, BigInt(ev.nonce), ev.amount);
+    const algoRecip = ev.algorandRecipient || algosdk.encodeAddress(new PublicKey(ev.userAddress).toBytes());
+    if (ev.tokenAddress === SOL_MINT || ev.tokenAddress === '' || ev.tokenAddress === '11111111111111111111111111111111') {
+      return await algorand.executeMintFsol(algoRecip, BigInt(ev.nonce), ev.amount);
     }
     const asaId = BigInt(2485314946); // prototype mapping
-    return await algorand.executeReleaseAsa(recip, asaId, BigInt(ev.nonce), ev.amount);
+    return await algorand.executeReleaseAsa(algoRecip, asaId, BigInt(ev.nonce), ev.amount);
   }
 
   if (ev.chain === 'solana' && ev.direction === 'burn') {
@@ -45,14 +46,28 @@ async function executeCounterpart(ev: BridgeEvent): Promise<string | undefined> 
   }
 
   if (ev.chain === 'algorand' && ev.direction === 'lock') {
-    const mint = new PublicKey('FRY2MintPlaceholder');
-    const recip = new PublicKey(ev.userAddress);
-    // NOTE: production must derive or create ATA for recip
-    return await solana.executeMintWrapped(BigInt(ev.nonce), ev.amount, mint, recip);
+    const asaId = BigInt(ev.tokenAddress);
+    if (asaId === 1105n) {
+      throw new Error('Unsupported: fSOL has no Solana wrapped mint in prototype');
+    }
+    const fry2SolanaMint = process.env.FRY2_SOLANA_MINT;
+    if (!fry2SolanaMint) {
+      throw new Error('Unsupported: FRY2_SOLANA_MINT not configured');
+    }
+    if (!ev.solanaRecipient) {
+      throw new Error('Unsupported: Algorand lock event missing solanaRecipient');
+    }
+    return await solana.executeMintWrapped(
+      BigInt(ev.nonce),
+      ev.amount,
+      new PublicKey(fry2SolanaMint),
+      new PublicKey(ev.solanaRecipient)
+    );
   }
 
   if (ev.chain === 'algorand' && ev.direction === 'burn') {
-    const recip = new PublicKey(ev.userAddress);
+    const recipRaw = ev.solanaRecipient || ev.userAddress;
+    const recip = new PublicKey(recipRaw);
     return await solana.executeUnlockSol(BigInt(ev.nonce), ev.amount, recip, recip);
   }
 

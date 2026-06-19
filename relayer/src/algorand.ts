@@ -1,4 +1,5 @@
 import algosdk from 'algosdk';
+import { PublicKey } from '@solana/web3.js';
 import { config } from './config';
 import { BridgeEvent } from './types';
 
@@ -14,8 +15,14 @@ const SELECTORS = {
 };
 
 export function initAlgorand() {
-  algod = new algosdk.Algodv2('', config.algodUrl, '');
-  sender = algosdk.mnemonicToSecretKey(config.algoMnemonic || algosdk.generateAccount().addr);
+  const url = new URL(config.algodUrl);
+  algod = new algosdk.Algodv2(config.algodToken, url.origin, url.port);
+  if (config.algoMnemonic) {
+    sender = algosdk.mnemonicToSecretKey(config.algoMnemonic);
+  } else {
+    console.warn('[Algorand] ALGO_MNEMONIC not set; generating ephemeral account');
+    sender = algosdk.generateAccount();
+  }
   appId = config.algoAppId;
 }
 
@@ -30,6 +37,13 @@ function pad32(addr: string): Buffer {
 }
 function lockRecordKey(user: string, nonce: bigint): Buffer {
   return Buffer.concat([pad32(user), u64BE(nonce)]);
+}
+
+async function getFsolAsaId(): Promise<number> {
+  const appInfo = await algod.getApplicationByID(appId).do();
+  const gs = (appInfo.params?.['global-state'] || []) as any[];
+  const entry = gs.find((s: any) => Buffer.from(s.key, 'base64').toString() === 'fsol_asa_id');
+  return entry && entry.value?.uint ? Number(entry.value.uint) : 1105;
 }
 
 export async function watchAlgorand(onEvent: (ev: BridgeEvent) => void): Promise<() => void> {
@@ -47,7 +61,6 @@ export async function watchAlgorand(onEvent: (ev: BridgeEvent) => void): Promise
         for (const tx of txs) {
           const txn = tx.txn;
           if (txn?.apid !== appId) continue;
-          const args: Buffer[] = (txn.apas ?? []).map((a: number) => Buffer.alloc(0)); // placeholder
           const appArgs: Uint8Array[] = txn.apaa ?? [];
           if (!appArgs.length) continue;
           const sel = Buffer.from(appArgs[0]);
@@ -59,13 +72,16 @@ export async function watchAlgorand(onEvent: (ev: BridgeEvent) => void): Promise
             const asaId = appArgs[1] ? b64buf(appArgs[1]).readBigUInt64BE(0) : 0n;
             const nonce = appArgs[2] ? b64buf(appArgs[2]).readBigUInt64BE(0) : 0n;
             const amount = appArgs[3] ? b64buf(appArgs[3]).readBigUInt64BE(0) : 0n;
+            const solanaRecip = appArgs[4] ? new PublicKey(b64buf(appArgs[4]).slice(0, 32)).toBase58() : '';
             onEvent({
               nonce: Number(nonce),
               chain: 'algorand',
               direction: 'lock',
               userAddress: algosdk.encodeAddress(b64buf(txn.snd)),
+              algorandRecipient: algosdk.encodeAddress(b64buf(txn.snd)),
               amount,
               tokenAddress: String(asaId),
+              solanaRecipient: solanaRecip,
               timestamp: Math.floor(Date.now() / 1000),
               status: 'pending',
               counterpartTxId: '',
@@ -73,13 +89,16 @@ export async function watchAlgorand(onEvent: (ev: BridgeEvent) => void): Promise
           } else if (sel.equals(SELECTORS.burn_fsol)) {
             const nonce = appArgs[1] ? b64buf(appArgs[1]).readBigUInt64BE(0) : 0n;
             const amount = appArgs[2] ? b64buf(appArgs[2]).readBigUInt64BE(0) : 0n;
+            const solanaRecip = appArgs[3] ? new PublicKey(b64buf(appArgs[3]).slice(0, 32)).toBase58() : '';
             onEvent({
               nonce: Number(nonce),
               chain: 'algorand',
               direction: 'burn',
               userAddress: algosdk.encodeAddress(b64buf(txn.snd)),
+              algorandRecipient: algosdk.encodeAddress(b64buf(txn.snd)),
               amount,
               tokenAddress: '',
+              solanaRecipient: solanaRecip,
               timestamp: Math.floor(Date.now() / 1000),
               status: 'pending',
               counterpartTxId: '',
@@ -106,6 +125,7 @@ export async function executeMintFsol(
   sp.fee = 3000;
   sp.flatFee = true;
   const boxKey = lockRecordKey(recipient, nonce);
+  const fsolAsaId = await getFsolAsaId();
   const atc = new algosdk.AtomicTransactionComposer();
   atc.addMethodCall({
     appID: appId,
@@ -114,7 +134,9 @@ export async function executeMintFsol(
     method: algosdk.ABIMethod.fromSignature('mint_fsol(address,uint64,uint64)void'),
     methodArgs: [recipient, Number(nonce), Number(amount)],
     suggestedParams: sp,
-    boxes: [{ appIndex: appId, name: boxKey }],
+    boxes: [{ appIndex: appId, name: new Uint8Array(boxKey) }],
+    appAccounts: [recipient],
+    appForeignAssets: [fsolAsaId],
   });
   const result = await atc.execute(algod, 3);
   return result.txIDs[0];
@@ -138,7 +160,9 @@ export async function executeReleaseAsa(
     method: algosdk.ABIMethod.fromSignature('release_asa(address,uint64,uint64,uint64)void'),
     methodArgs: [recipient, Number(asaId), Number(nonce), Number(amount)],
     suggestedParams: sp,
-    boxes: [{ appIndex: appId, name: boxKey }],
+    boxes: [{ appIndex: appId, name: new Uint8Array(boxKey) }],
+    appAccounts: [recipient],
+    appForeignAssets: [Number(asaId)],
   });
   const result = await atc.execute(algod, 3);
   return result.txIDs[0];

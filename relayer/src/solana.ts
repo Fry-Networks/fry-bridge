@@ -7,6 +7,7 @@ import {
   SystemProgram,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
+import algosdk from 'algosdk';
 import * as fs from 'fs';
 import { config } from './config';
 import { BridgeEvent } from './types';
@@ -21,6 +22,43 @@ const RELAYER_KP = config.solanaKeypairPath
 export const connection = new Connection(config.solanaRpc, 'confirmed');
 
 // Discriminators (first 8 bytes of SHA256 of `global:<name>`)
+const EVENT_DISC = {
+  LockEvent: Buffer.from([76, 37, 6, 186, 14, 42, 253, 15]),
+  BurnEvent: Buffer.from([33, 89, 47, 117, 82, 124, 238, 250]),
+};
+
+function parseAnchorEvent(logs: string[]): { name: string; data: Buffer } | undefined {
+  for (const line of logs) {
+    const m = line.match(/^Program data: (.+)$/);
+    if (!m) continue;
+    try {
+      const buf = Buffer.from(m[1], 'base64');
+      if (buf.length < 8) continue;
+      const disc = buf.slice(0, 8);
+      if (disc.equals(EVENT_DISC.LockEvent)) {
+        return { name: 'LockEvent', data: buf.slice(8) };
+      }
+      if (disc.equals(EVENT_DISC.BurnEvent)) {
+        return { name: 'BurnEvent', data: buf.slice(8) };
+      }
+    } catch {}
+  }
+  return undefined;
+}
+
+function readPubkey(buf: Buffer, offset: number): string {
+  return new PublicKey(buf.slice(offset, offset + 32)).toBase58();
+}
+function readAlgorandAddress(buf: Buffer, offset: number): string {
+  return algosdk.encodeAddress(buf.slice(offset, offset + 32));
+}
+function readU64(buf: Buffer, offset: number): bigint {
+  return buf.readBigUInt64LE(offset);
+}
+function readI64(buf: Buffer, offset: number): bigint {
+  return buf.readBigInt64LE(offset);
+}
+
 const DISC = {
   lock_sol: Buffer.from([181,15,15,99,159,87,241,42]),
   lock_spl: Buffer.from([57,242,157,133,111,4,8,242]),
@@ -62,6 +100,12 @@ function findUserStatePda(user: PublicKey): [PublicKey, number] {
   );
 }
 
+async function buildAndSend(tx: Transaction): Promise<string> {
+  tx.feePayer = RELAYER_KP.publicKey;
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  return sendAndConfirmTransaction(connection, tx, [RELAYER_KP]);
+}
+
 export async function watchSolana(onEvent: (ev: BridgeEvent) => void): Promise<() => void> {
   let lastSig = '';
   const poll = async () => {
@@ -71,37 +115,41 @@ export async function watchSolana(onEvent: (ev: BridgeEvent) => void): Promise<(
         if (s.signature === lastSig) continue;
         const tx = await connection.getTransaction(s.signature, { commitment: 'confirmed' });
         if (!tx?.meta?.logMessages) continue;
-        const logs = tx.meta.logMessages.join('\n');
-        if (logs.includes('LockEvent')) {
-          const lockMatch = logs.match(/LockEvent\s*\{[^}]*user:\s*(\S+)/);
-          const user = lockMatch ? lockMatch[1] : tx.transaction.message.accountKeys[0].toBase58();
-          const amountMatch = logs.match(/amount:\s*(\d+)/);
-          const nonceMatch = logs.match(/nonce:\s*(\d+)/);
-          const tokenMatch = logs.match(/token_mint:\s*(\S+)/);
-          const recipMatch = logs.match(/algorand_recipient:\s*(\S+)/);
+        const evt = parseAnchorEvent(tx.meta.logMessages);
+        if (!evt) continue;
+        if (evt.name === 'LockEvent') {
+          const d = evt.data;
+          const user = readPubkey(d, 0);
+          const recip = readAlgorandAddress(d, 32);
+          const amount = readU64(d, 64);
+          const tokenMint = readPubkey(d, 72);
+          const nonce = readU64(d, 104);
+          const ts = Number(readI64(d, 112));
           onEvent({
-            nonce: Number(nonceMatch?.[1] ?? '0'),
+            nonce: Number(nonce),
             chain: 'solana',
             direction: 'lock',
             userAddress: user,
-            amount: BigInt(amountMatch?.[1] ?? '0'),
-            tokenAddress: tokenMatch?.[1] ?? '',
-            timestamp: Math.floor(Date.now() / 1000),
+            amount,
+            tokenAddress: tokenMint,
+            algorandRecipient: recip,
+            timestamp: ts,
             status: 'pending',
             counterpartTxId: s.signature,
           });
-        } else if (logs.includes('BurnEvent')) {
-          const userMatch = logs.match(/user:\s*(\S+)/);
-          const amountMatch = logs.match(/amount:\s*(\d+)/);
-          const nonceMatch = logs.match(/nonce:\s*(\d+)/);
-          const mintMatch = logs.match(/wrapped_mint:\s*(\S+)/);
+        } else if (evt.name === 'BurnEvent') {
+          const d = evt.data;
+          const nonce = readU64(d, 0);
+          const user = readPubkey(d, 8);
+          const amount = readU64(d, 40);
+          const wrappedMint = readPubkey(d, 48);
           onEvent({
-            nonce: Number(nonceMatch?.[1] ?? '0'),
+            nonce: Number(nonce),
             chain: 'solana',
             direction: 'burn',
-            userAddress: userMatch?.[1] ?? '',
-            amount: BigInt(amountMatch?.[1] ?? '0'),
-            tokenAddress: mintMatch?.[1] ?? '',
+            userAddress: user,
+            amount,
+            tokenAddress: wrappedMint,
             timestamp: Math.floor(Date.now() / 1000),
             status: 'pending',
             counterpartTxId: s.signature,
@@ -141,7 +189,7 @@ export async function executeUnlockSol(
   const data = Buffer.concat([DISC.unlock_sol, u64LE(nonce), u64LE(amount)]);
   const ix = new TransactionInstruction({ keys, programId: PROGRAM_ID, data });
   const tx = new Transaction().add(ix);
-  return await sendAndConfirmTransaction(connection, tx, [RELAYER_KP]);
+  return buildAndSend(tx);
 }
 
 export async function executeUnlockSpl(
@@ -172,7 +220,7 @@ export async function executeUnlockSpl(
   const data = Buffer.concat([DISC.unlock_spl, u64LE(nonce), u64LE(amount)]);
   const ix = new TransactionInstruction({ keys, programId: PROGRAM_ID, data });
   const tx = new Transaction().add(ix);
-  return await sendAndConfirmTransaction(connection, tx, [RELAYER_KP]);
+  return buildAndSend(tx);
 }
 
 export async function executeMintWrapped(
@@ -196,5 +244,5 @@ export async function executeMintWrapped(
   const data = Buffer.concat([DISC.mint_wrapped, u64LE(nonce), u64LE(amount)]);
   const ix = new TransactionInstruction({ keys, programId: PROGRAM_ID, data });
   const tx = new Transaction().add(ix);
-  return await sendAndConfirmTransaction(connection, tx, [RELAYER_KP]);
+  return buildAndSend(tx);
 }
