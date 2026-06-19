@@ -1,0 +1,18 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+fry_bridge_solana = "6SywTFsyXStoLJUSrsSzuupzK5SYEsTj5Jg9p9qr3vXz"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "REDACTED_ROTATE_ME/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
