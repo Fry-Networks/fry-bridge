@@ -1,0 +1,923 @@
+#pragma version 9
+txn NumAppArgs
+int 0
+==
+bnz main_l22
+txna ApplicationArgs 0
+method "initialize(address,uint64)void"
+==
+bnz main_l21
+txna ApplicationArgs 0
+method "set_limits(uint64,uint64,uint64,uint64,uint64)void"
+==
+bnz main_l20
+txna ApplicationArgs 0
+method "optin_asa(uint64)void"
+==
+bnz main_l19
+txna ApplicationArgs 0
+method "set_relayer(address)void"
+==
+bnz main_l18
+txna ApplicationArgs 0
+method "pause()void"
+==
+bnz main_l17
+txna ApplicationArgs 0
+method "unpause()void"
+==
+bnz main_l16
+txna ApplicationArgs 0
+method "deposit_asa(uint64,uint64,uint64,address)void"
+==
+bnz main_l15
+txna ApplicationArgs 0
+method "burn_fsol(uint64,uint64,address)void"
+==
+bnz main_l14
+txna ApplicationArgs 0
+method "mint_fsol(address,uint64,uint64)void"
+==
+bnz main_l13
+txna ApplicationArgs 0
+method "release_asa(address,uint64,uint64,uint64)void"
+==
+bnz main_l12
+err
+main_l12:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub releaseasacaster_19
+int 1
+return
+main_l13:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub mintfsolcaster_18
+int 1
+return
+main_l14:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub burnfsolcaster_17
+int 1
+return
+main_l15:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub depositasacaster_16
+int 1
+return
+main_l16:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub unpausecaster_15
+int 1
+return
+main_l17:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub pausecaster_14
+int 1
+return
+main_l18:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub setrelayercaster_13
+int 1
+return
+main_l19:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub optinasacaster_12
+int 1
+return
+main_l20:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub setlimitscaster_11
+int 1
+return
+main_l21:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+callsub initializecaster_10
+int 1
+return
+main_l22:
+txn OnCompletion
+int NoOp
+==
+bnz main_l24
+err
+main_l24:
+txn ApplicationID
+int 0
+==
+assert
+byte "authority"
+txn Sender
+app_global_put
+byte "relayer"
+txn Sender
+app_global_put
+byte "paused"
+int 1
+app_global_put
+byte "nonce"
+int 0
+app_global_put
+byte "fsol_asa_id"
+int 0
+app_global_put
+byte "per_tx_limit"
+int 0
+app_global_put
+byte "hourly_limit"
+int 0
+app_global_put
+byte "daily_limit"
+int 0
+app_global_put
+byte "time_lock_threshold"
+int 0
+app_global_put
+byte "time_lock_duration"
+int 0
+app_global_put
+byte "hourly_volume"
+int 0
+app_global_put
+byte "hourly_period_start"
+int 0
+app_global_put
+byte "daily_volume"
+int 0
+app_global_put
+byte "daily_period_start"
+int 0
+app_global_put
+int 1
+return
+
+// initialize
+initialize_0:
+proto 2 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+byte "fsol_asa_id"
+app_global_get
+int 0
+==
+// AlreadyInitialized
+assert
+byte "relayer"
+frame_dig -2
+app_global_put
+byte "fsol_asa_id"
+frame_dig -1
+app_global_put
+byte "hourly_volume"
+int 0
+app_global_put
+byte "hourly_period_start"
+global LatestTimestamp
+app_global_put
+byte "daily_volume"
+int 0
+app_global_put
+byte "daily_period_start"
+global LatestTimestamp
+app_global_put
+byte "paused"
+int 0
+app_global_put
+int 1
+return
+
+// set_limits
+setlimits_1:
+proto 5 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+byte "per_tx_limit"
+frame_dig -5
+app_global_put
+byte "hourly_limit"
+frame_dig -4
+app_global_put
+byte "daily_limit"
+frame_dig -3
+app_global_put
+byte "time_lock_threshold"
+frame_dig -2
+app_global_put
+byte "time_lock_duration"
+frame_dig -1
+app_global_put
+int 1
+return
+
+// optin_asa
+optinasa_2:
+proto 1 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+itxn_begin
+int axfer
+itxn_field TypeEnum
+frame_dig -1
+itxn_field XferAsset
+int 0
+itxn_field AssetAmount
+global CurrentApplicationAddress
+itxn_field AssetReceiver
+global MinTxnFee
+itxn_field Fee
+itxn_submit
+int 1
+return
+
+// set_relayer
+setrelayer_3:
+proto 1 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+byte "relayer"
+frame_dig -1
+app_global_put
+int 1
+return
+
+// pause
+pause_4:
+proto 0 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+byte "paused"
+int 1
+app_global_put
+int 1
+return
+
+// unpause
+unpause_5:
+proto 0 0
+txn Sender
+byte "authority"
+app_global_get
+==
+// Unauthorized
+assert
+byte "paused"
+int 0
+app_global_put
+int 1
+return
+
+// deposit_asa
+depositasa_6:
+proto 4 0
+byte "paused"
+app_global_get
+int 0
+==
+// Paused
+assert
+frame_dig -2
+byte "per_tx_limit"
+app_global_get
+<=
+// RateLimitExceeded
+assert
+global LatestTimestamp
+byte "hourly_period_start"
+app_global_get
+-
+int 3600
+>=
+bnz depositasa_6_l6
+depositasa_6_l1:
+byte "hourly_volume"
+byte "hourly_volume"
+app_global_get
+frame_dig -2
++
+app_global_put
+byte "hourly_volume"
+app_global_get
+byte "hourly_limit"
+app_global_get
+<=
+// RateLimitExceeded
+assert
+global LatestTimestamp
+byte "daily_period_start"
+app_global_get
+-
+int 86400
+>=
+bnz depositasa_6_l5
+depositasa_6_l2:
+byte "daily_volume"
+byte "daily_volume"
+app_global_get
+frame_dig -2
++
+app_global_put
+byte "daily_volume"
+app_global_get
+byte "daily_limit"
+app_global_get
+<=
+// RateLimitExceeded
+assert
+txn GroupIndex
+int 1
+-
+gtxns TypeEnum
+int axfer
+==
+// InvalidDepositTxn
+assert
+txn GroupIndex
+int 1
+-
+gtxns XferAsset
+frame_dig -4
+==
+// InvalidTokenPair
+assert
+txn GroupIndex
+int 1
+-
+gtxns AssetReceiver
+global CurrentApplicationAddress
+==
+// InvalidDepositReceiver
+assert
+txn GroupIndex
+int 1
+-
+gtxns AssetAmount
+frame_dig -2
+==
+// InvalidDepositAmount
+assert
+txn GroupIndex
+int 1
+-
+gtxns Sender
+txn Sender
+==
+// InvalidDepositSender
+assert
+txn Sender
+frame_dig -3
+itob
+concat
+int 105
+box_create
+int 0
+>
+// InvalidNonce
+assert
+txn Sender
+frame_dig -3
+itob
+concat
+txn Sender
+frame_dig -1
+concat
+frame_dig -2
+itob
+concat
+frame_dig -4
+itob
+concat
+frame_dig -3
+itob
+concat
+global LatestTimestamp
+itob
+concat
+frame_dig -2
+byte "time_lock_threshold"
+app_global_get
+>=
+bnz depositasa_6_l4
+int 0
+b depositasa_6_l7
+depositasa_6_l4:
+global LatestTimestamp
+byte "time_lock_duration"
+app_global_get
++
+b depositasa_6_l7
+depositasa_6_l5:
+byte "daily_period_start"
+global LatestTimestamp
+app_global_put
+byte "daily_volume"
+int 0
+app_global_put
+b depositasa_6_l2
+depositasa_6_l6:
+byte "hourly_period_start"
+global LatestTimestamp
+app_global_put
+byte "hourly_volume"
+int 0
+app_global_put
+b depositasa_6_l1
+depositasa_6_l7:
+itob
+concat
+byte 0x00
+concat
+box_put
+int 1
+return
+
+// burn_fsol
+burnfsol_7:
+proto 3 0
+byte "paused"
+app_global_get
+int 0
+==
+// Paused
+assert
+txn GroupIndex
+int 1
+-
+gtxns TypeEnum
+int axfer
+==
+// InvalidDepositTxn
+assert
+txn GroupIndex
+int 1
+-
+gtxns XferAsset
+byte "fsol_asa_id"
+app_global_get
+==
+// InvalidTokenPair
+assert
+txn GroupIndex
+int 1
+-
+gtxns AssetReceiver
+global CurrentApplicationAddress
+==
+// InvalidDepositReceiver
+assert
+txn GroupIndex
+int 1
+-
+gtxns AssetAmount
+frame_dig -2
+==
+// InvalidDepositAmount
+assert
+txn GroupIndex
+int 1
+-
+gtxns Sender
+txn Sender
+==
+// InvalidDepositSender
+assert
+txn Sender
+frame_dig -3
+itob
+concat
+int 105
+box_create
+int 0
+>
+// InvalidNonce
+assert
+txn Sender
+frame_dig -3
+itob
+concat
+txn Sender
+frame_dig -1
+concat
+frame_dig -2
+itob
+concat
+byte "fsol_asa_id"
+app_global_get
+itob
+concat
+frame_dig -3
+itob
+concat
+global LatestTimestamp
+itob
+concat
+frame_dig -2
+byte "time_lock_threshold"
+app_global_get
+>=
+bnz burnfsol_7_l2
+int 0
+b burnfsol_7_l3
+burnfsol_7_l2:
+global LatestTimestamp
+byte "time_lock_duration"
+app_global_get
++
+burnfsol_7_l3:
+itob
+concat
+byte 0x00
+concat
+box_put
+int 1
+return
+
+// mint_fsol
+mintfsol_8:
+proto 3 0
+txn Sender
+byte "relayer"
+app_global_get
+==
+// Unauthorized
+assert
+byte "paused"
+app_global_get
+int 0
+==
+// Paused
+assert
+frame_dig -3
+frame_dig -2
+itob
+concat
+int 105
+box_create
+int 0
+>
+// InvalidNonce
+assert
+frame_dig -3
+frame_dig -2
+itob
+concat
+frame_dig -3
+int 32
+bzero
+concat
+frame_dig -1
+itob
+concat
+byte "fsol_asa_id"
+app_global_get
+itob
+concat
+frame_dig -2
+itob
+concat
+global LatestTimestamp
+itob
+concat
+int 0
+itob
+concat
+byte 0x00
+concat
+box_put
+itxn_begin
+int axfer
+itxn_field TypeEnum
+global CurrentApplicationAddress
+itxn_field Sender
+frame_dig -3
+itxn_field AssetReceiver
+frame_dig -1
+itxn_field AssetAmount
+byte "fsol_asa_id"
+app_global_get
+itxn_field XferAsset
+global MinTxnFee
+itxn_field Fee
+itxn_submit
+int 1
+return
+
+// release_asa
+releaseasa_9:
+proto 4 0
+txn Sender
+byte "relayer"
+app_global_get
+==
+// Unauthorized
+assert
+byte "paused"
+app_global_get
+int 0
+==
+// Paused
+assert
+frame_dig -4
+frame_dig -2
+itob
+concat
+int 105
+box_create
+int 0
+>
+// InvalidNonce
+assert
+frame_dig -4
+frame_dig -2
+itob
+concat
+frame_dig -4
+int 32
+bzero
+concat
+frame_dig -1
+itob
+concat
+frame_dig -3
+itob
+concat
+frame_dig -2
+itob
+concat
+global LatestTimestamp
+itob
+concat
+int 0
+itob
+concat
+byte 0x00
+concat
+box_put
+itxn_begin
+int axfer
+itxn_field TypeEnum
+global CurrentApplicationAddress
+itxn_field Sender
+frame_dig -4
+itxn_field AssetReceiver
+frame_dig -1
+itxn_field AssetAmount
+frame_dig -3
+itxn_field XferAsset
+global MinTxnFee
+itxn_field Fee
+itxn_submit
+int 1
+return
+
+// initialize_caster
+initializecaster_10:
+proto 0 0
+byte ""
+int 0
+txna ApplicationArgs 1
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+frame_dig 0
+frame_dig 1
+callsub initialize_0
+retsub
+
+// set_limits_caster
+setlimitscaster_11:
+proto 0 0
+int 0
+dupn 4
+txna ApplicationArgs 1
+btoi
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+txna ApplicationArgs 3
+btoi
+frame_bury 2
+txna ApplicationArgs 4
+btoi
+frame_bury 3
+txna ApplicationArgs 5
+btoi
+frame_bury 4
+frame_dig 0
+frame_dig 1
+frame_dig 2
+frame_dig 3
+frame_dig 4
+callsub setlimits_1
+retsub
+
+// optin_asa_caster
+optinasacaster_12:
+proto 0 0
+int 0
+txna ApplicationArgs 1
+btoi
+frame_bury 0
+frame_dig 0
+callsub optinasa_2
+retsub
+
+// set_relayer_caster
+setrelayercaster_13:
+proto 0 0
+byte ""
+txna ApplicationArgs 1
+frame_bury 0
+frame_dig 0
+callsub setrelayer_3
+retsub
+
+// pause_caster
+pausecaster_14:
+proto 0 0
+callsub pause_4
+retsub
+
+// unpause_caster
+unpausecaster_15:
+proto 0 0
+callsub unpause_5
+retsub
+
+// deposit_asa_caster
+depositasacaster_16:
+proto 0 0
+int 0
+dupn 2
+byte ""
+txna ApplicationArgs 1
+btoi
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+txna ApplicationArgs 3
+btoi
+frame_bury 2
+txna ApplicationArgs 4
+frame_bury 3
+frame_dig 0
+frame_dig 1
+frame_dig 2
+frame_dig 3
+callsub depositasa_6
+retsub
+
+// burn_fsol_caster
+burnfsolcaster_17:
+proto 0 0
+int 0
+dup
+byte ""
+txna ApplicationArgs 1
+btoi
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+txna ApplicationArgs 3
+frame_bury 2
+frame_dig 0
+frame_dig 1
+frame_dig 2
+callsub burnfsol_7
+retsub
+
+// mint_fsol_caster
+mintfsolcaster_18:
+proto 0 0
+byte ""
+int 0
+dup
+txna ApplicationArgs 1
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+txna ApplicationArgs 3
+btoi
+frame_bury 2
+frame_dig 0
+frame_dig 1
+frame_dig 2
+callsub mintfsol_8
+retsub
+
+// release_asa_caster
+releaseasacaster_19:
+proto 0 0
+byte ""
+int 0
+dupn 2
+txna ApplicationArgs 1
+frame_bury 0
+txna ApplicationArgs 2
+btoi
+frame_bury 1
+txna ApplicationArgs 3
+btoi
+frame_bury 2
+txna ApplicationArgs 4
+btoi
+frame_bury 3
+frame_dig 0
+frame_dig 1
+frame_dig 2
+frame_dig 3
+callsub releaseasa_9
+retsub
