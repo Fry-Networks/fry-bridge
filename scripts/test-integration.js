@@ -20,8 +20,8 @@ const SOL_KP_PATH = process.env.SOLANA_KEYPAIR_PATH;
 const ALGO_URL = process.env.ALGOD_URL || 'http://127.0.0.1:4001';
 const ALGO_TOKEN = process.env.ALGOD_TOKEN || '';
 const ALGO_APP = Number(process.env.ALGO_APP_ID || '1106');
-const FRY2_ASA = 1113;
-const FSOL_ASA = 1105;
+const FRY2_ASA = Number(process.env.FRY2_ASA_ID || '1113');
+const FSOL_ASA = Number(process.env.FSOL_ASA_ID || '1105');
 const RELAY_PORT = Number(process.env.PORT || '8090');
 const ADMIN_TOK = process.env.RELAYER_ADMIN_TOKEN || 'changeme';
 
@@ -181,11 +181,22 @@ async function sendDepositAsa(signerAcc, asaId, nonce, amount, solanaRecipient) 
     Buffer.from(algosdk.decodeAddress(signerAcc.addr).publicKey),
     u64BE(nonce)
   ]);
+  const appAddr = algosdk.getApplicationAddress(ALGO_APP);
+  const signer = algosdk.makeBasicAccountTransactionSigner(signerAcc);
+
+  // Grouped txn 1: asset transfer to app (contract checks Gtxn[group_index-1])
+  const xferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: signerAcc.addr, to: appAddr, assetIndex: Number(asaId),
+    amount: Number(amount), suggestedParams: sp,
+  });
+  atc.addTransaction({ txn: xferTxn, signer });
+
+  // Grouped txn 2: deposit_asa method call
   atc.addMethodCall({
     appID: ALGO_APP,
     sender: signerAcc.addr,
-    signer: algosdk.makeBasicAccountTransactionSigner(signerAcc),
-    method: algosdk.ABIMethod.fromSignature('deposit_asa(asset,uint64,uint64,address)void'),
+    signer,
+    method: algosdk.ABIMethod.fromSignature('deposit_asa(uint64,uint64,uint64,address)void'),
     methodArgs: [Number(asaId), Number(nonce), Number(amount), solanaRecipient],
     suggestedParams: sp,
     boxes: [{ appIndex: Number(ALGO_APP), name: new Uint8Array(boxKey) }],
@@ -202,10 +213,21 @@ async function sendBurnFsol(signerAcc, nonce, amount, solanaRecipient) {
     Buffer.from(algosdk.decodeAddress(signerAcc.addr).publicKey),
     u64BE(nonce)
   ]);
+  const appAddr = algosdk.getApplicationAddress(ALGO_APP);
+  const signer = algosdk.makeBasicAccountTransactionSigner(signerAcc);
+
+  // Grouped txn 1: fSOL transfer to app (contract checks Gtxn[group_index-1])
+  const fsolXfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    from: signerAcc.addr, to: appAddr, assetIndex: FSOL_ASA,
+    amount: Number(amount), suggestedParams: sp,
+  });
+  atc.addTransaction({ txn: fsolXfer, signer });
+
+  // Grouped txn 2: burn_fsol method call
   atc.addMethodCall({
     appID: ALGO_APP,
     sender: signerAcc.addr,
-    signer: algosdk.makeBasicAccountTransactionSigner(signerAcc),
+    signer,
     method: algosdk.ABIMethod.fromSignature('burn_fsol(uint64,uint64,address)void'),
     methodArgs: [Number(nonce), Number(amount), solanaRecipient],
     suggestedParams: sp,
@@ -415,7 +437,7 @@ function log(flow, status, detail) {
     const fSolBal = (acctInfo.assets || []).find(a => a['asset-id'] === FSOL_ASA)?.amount || 0;
     if (fSolBal < 100) throw new Error(`Insufficient fSOL balance (${fSolBal}) – Flow 1 likely failed`);
 
-    const nonce = 0;
+    const nonce = 100; // avoid nonce collision with Flow 1's mint_fsol (nonce=0)
     const amount = 100; // very small amount to avoid limit issues
     const solRecip = solTestKP.publicKey.toBytes();
     console.log('Flow 2: burning fSOL, nonce', nonce, 'amount', amount);

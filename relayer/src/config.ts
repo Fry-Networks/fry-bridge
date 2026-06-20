@@ -18,4 +18,6 @@ export const config: RelayerConfig = {
   port: Number(process.env.PORT || '8090'),
   adminToken: process.env.RELAYER_ADMIN_TOKEN || 'changeme',
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS || '5000'),
+  fsolAsaId: process.env.FSOL_ASA_ID || '1105',
+  fry2AsaId: process.env.FRY2_ASA_ID || '2485314946',
 };
