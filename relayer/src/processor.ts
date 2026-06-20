@@ -68,7 +68,7 @@ async function executeCounterpart(ev: BridgeEvent): Promise<string | undefined> 
   if (ev.chain === 'algorand' && ev.direction === 'burn') {
     const recipRaw = ev.solanaRecipient || ev.userAddress;
     const recip = new PublicKey(recipRaw);
-    return await solana.executeUnlockSol(BigInt(ev.nonce), ev.amount, recip, recip);
+    return await solana.executeReleaseSol(BigInt(ev.nonce), ev.amount, recip);
   }
 
   return undefined;

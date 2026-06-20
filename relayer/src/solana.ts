@@ -66,6 +66,7 @@ const DISC = {
   unlock_sol: Buffer.from([216,43,22,34,242,159,14,34]),
   unlock_spl: Buffer.from([52,174,149,148,187,53,29,90]),
   mint_wrapped: Buffer.from([130,90,18,116,188,64,204,199]),
+  release_sol: Buffer.from([58,64,23,194,212,156,137,9]),
 };
 
 function u64LE(v: bigint): Buffer {
@@ -220,6 +221,35 @@ export async function executeUnlockSpl(
   ];
 
   const data = Buffer.concat([DISC.unlock_spl, u64LE(nonce), u64LE(amount)]);
+  const ix = new TransactionInstruction({ keys, programId: PROGRAM_ID, data });
+  const tx = new Transaction().add(ix);
+  return buildAndSend(tx);
+}
+
+export async function executeReleaseSol(
+  nonce: bigint,
+  amount: bigint,
+  recipient: PublicKey
+): Promise<string> {
+  const [bridgeState] = findBridgeStatePda();
+  const [solVault] = findSolVaultPda();
+  const releaseRecordSeeds = [
+    Buffer.from('release_record'),
+    recipient.toBuffer(),
+    u64LE(nonce),
+  ];
+  const [releaseRecord] = PublicKey.findProgramAddressSync(releaseRecordSeeds, PROGRAM_ID);
+
+  const keys = [
+    { pubkey: RELAYER_KP.publicKey, isSigner: true, isWritable: true },
+    { pubkey: bridgeState, isSigner: false, isWritable: true },
+    { pubkey: solVault, isSigner: false, isWritable: true },
+    { pubkey: recipient, isSigner: false, isWritable: true },
+    { pubkey: releaseRecord, isSigner: false, isWritable: true },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ];
+
+  const data = Buffer.concat([DISC.release_sol, u64LE(nonce), u64LE(amount)]);
   const ix = new TransactionInstruction({ keys, programId: PROGRAM_ID, data });
   const tx = new Transaction().add(ix);
   return buildAndSend(tx);
