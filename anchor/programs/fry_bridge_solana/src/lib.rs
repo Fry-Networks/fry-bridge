@@ -245,18 +245,17 @@ pub mod fry_bridge_solana {
             BridgeError::InsufficientFunds
         );
 
-        // Transfer SOL from vault to recipient using PDA signer
-        let vault_seeds = &[b"sol_vault".as_ref(), &[ctx.bumps.sol_vault]];
-        let signer = &[&vault_seeds[..]];
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.sol_vault.to_account_info(),
-                to: ctx.accounts.recipient.to_account_info(),
-            },
-            signer,
-        );
-        anchor_lang::system_program::transfer(cpi_ctx, amount)?;
+        // Direct lamport manipulation (sol_vault carries account data, CPI transfer fails)
+        let vault_info = ctx.accounts.sol_vault.to_account_info();
+        let recipient_info = ctx.accounts.recipient.to_account_info();
+        **vault_info.try_borrow_mut_lamports()? = vault_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(BridgeError::InsufficientFunds)?;
+        **recipient_info.try_borrow_mut_lamports()? = recipient_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(BridgeError::Overflow)?;
 
         ctx.accounts.lock_record.consumed = true;
 
@@ -417,18 +416,17 @@ pub mod fry_bridge_solana {
             BridgeError::InsufficientFunds
         );
 
-        // Transfer SOL from vault to recipient
-        let vault_seeds = &[b"sol_vault".as_ref(), &[ctx.bumps.sol_vault]];
-        let signer = &[&vault_seeds[..]];
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            anchor_lang::system_program::Transfer {
-                from: ctx.accounts.sol_vault.to_account_info(),
-                to: ctx.accounts.recipient.to_account_info(),
-            },
-            signer,
-        );
-        anchor_lang::system_program::transfer(cpi_ctx, amount)?;
+        // Direct lamport manipulation (sol_vault carries account data, CPI transfer fails)
+        let vault_info = ctx.accounts.sol_vault.to_account_info();
+        let recipient_info = ctx.accounts.recipient.to_account_info();
+        **vault_info.try_borrow_mut_lamports()? = vault_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(BridgeError::InsufficientFunds)?;
+        **recipient_info.try_borrow_mut_lamports()? = recipient_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(BridgeError::Overflow)?;
 
         emit!(ReleaseEvent {
             recipient: ctx.accounts.recipient.key(),
@@ -901,4 +899,6 @@ pub enum BridgeError {
     InvalidNonce,
     #[msg("Invalid token pair")]
     InvalidTokenPair,
+    #[msg("Arithmetic overflow")]
+    Overflow,
 }

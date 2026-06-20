@@ -94,8 +94,8 @@ describe("fry_bridge_solana", () => {
         await program.methods
             .initialize({
                 relayer: relayer.publicKey,
-                perTxLimit: new BN(1_000_000),
-                hourlyLimit: new BN(3_000_000),
+                perTxLimit: new BN(2_000_000),
+                hourlyLimit: new BN(5_000_000),
                 dailyLimit: new BN(10_000_000),
                 timeLockThreshold: new BN(500_000),
                 timeLockDuration: new BN(10),
@@ -161,7 +161,7 @@ describe("fry_bridge_solana", () => {
 
         try {
             await program.methods
-                .lockSol(new BN(nonce), new BN(2_000_000), relayer.publicKey)
+                .lockSol(new BN(nonce), new BN(3_000_000), relayer.publicKey)
                 .accounts({
                     user: user.publicKey,
                     bridgeState,
@@ -184,7 +184,7 @@ describe("fry_bridge_solana", () => {
             program.programId
         );
 
-        // Two successful locks (nonce 0, 1)
+        // Two successful locks (nonce 0, 1) — 2M each = 4M total (under 5M hourly limit)
         for (let i = 0; i < 2; i++) {
             const nonce = i;
             const nonceBuf = Buffer.alloc(8);
@@ -194,7 +194,7 @@ describe("fry_bridge_solana", () => {
                 program.programId
             );
             await program.methods
-                .lockSol(new BN(nonce), new BN(100_000), relayer.publicKey)
+                .lockSol(new BN(nonce), new BN(2_000_000), relayer.publicKey)
                 .accounts({
                     user: user.publicKey,
                     bridgeState,
@@ -207,7 +207,7 @@ describe("fry_bridge_solana", () => {
                 .rpc();
         }
 
-        // Third lock (nonce=2) should breach hourly limit (300k > 200k)
+        // Third lock (nonce=2) should breach hourly limit (4M + 2M = 6M > 5M)
         const nonce = 2;
         const nonceBuf = Buffer.alloc(8);
         new BN(nonce).toArrayLike(Buffer, "le", 8).copy(nonceBuf);
@@ -218,7 +218,7 @@ describe("fry_bridge_solana", () => {
 
         try {
             await program.methods
-                .lockSol(new BN(nonce), new BN(100_000), relayer.publicKey)
+                .lockSol(new BN(nonce), new BN(2_000_000), relayer.publicKey)
                 .accounts({
                     user: user.publicKey,
                     bridgeState,
@@ -239,7 +239,7 @@ describe("fry_bridge_solana", () => {
     // Lock / Unlock SOL
     // -----------------------------------------------------------
     it("Locks SOL", async () => {
-        const nonce = 2; // first free nonce after failed rate-limit
+        const nonce = 2; // next_nonce after hourly test (0,1 consumed, 2 failed+rolled back)
         const [userState] = PublicKey.findProgramAddressSync(
             [Buffer.from("user_state"), user.publicKey.toBuffer()],
             program.programId

@@ -1549,6 +1549,11 @@
       "code": 6006,
       "name": "InvalidTokenPair",
       "msg": "Invalid token pair"
+    },
+    {
+      "code": 6007,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
     }
   ]
 }
