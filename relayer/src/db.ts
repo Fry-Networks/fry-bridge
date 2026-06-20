@@ -48,11 +48,11 @@ export function upsertEvent(ev: BridgeEvent): void {
       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(nonce, chain, direction, userAddress)
     DO UPDATE SET
-      status = excluded.status,
-      counterpartTxId = excluded.counterpartTxId,
-      timeLock = excluded.timeLock,
-      algorandRecipient = excluded.algorandRecipient,
-      solanaRecipient = excluded.solanaRecipient
+      status = CASE WHEN processed_events.status IN ('processed','failed') THEN processed_events.status ELSE excluded.status END,
+      counterpartTxId = CASE WHEN processed_events.status IN ('processed','failed') THEN processed_events.counterpartTxId ELSE excluded.counterpartTxId END,
+      timeLock = CASE WHEN processed_events.status IN ('processed','failed') THEN processed_events.timeLock ELSE excluded.timeLock END,
+      algorandRecipient = CASE WHEN processed_events.status IN ('processed','failed') THEN processed_events.algorandRecipient ELSE excluded.algorandRecipient END,
+      solanaRecipient = CASE WHEN processed_events.status IN ('processed','failed') THEN processed_events.solanaRecipient ELSE excluded.solanaRecipient END
   `);
   stmt.run(
     ev.nonce,

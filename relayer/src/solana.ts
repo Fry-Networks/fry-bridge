@@ -111,8 +111,10 @@ export async function watchSolana(onEvent: (ev: BridgeEvent) => void): Promise<(
   const poll = async () => {
     try {
       const sigs = await connection.getSignaturesForAddress(PROGRAM_ID, { limit: 10 });
+      let pastLast = !lastSig;
       for (const s of sigs.slice().reverse()) {
-        if (s.signature === lastSig) continue;
+        if (s.signature === lastSig) { pastLast = true; continue; }
+        if (!pastLast) continue;
         const tx = await connection.getTransaction(s.signature, { commitment: 'confirmed' });
         if (!tx?.meta?.logMessages) continue;
         const evt = parseAnchorEvent(tx.meta.logMessages);
