@@ -11,7 +11,7 @@ fry_bridge_solana = "6SywTFsyXStoLJUSrsSzuupzK5SYEsTj5Jg9p9qr3vXz"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "http://100.69.195.100:8899"
 wallet = "REDACTED_ROTATE_ME/.config/solana/id.json"
 
 [scripts]
