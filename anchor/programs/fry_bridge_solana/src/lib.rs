@@ -395,6 +395,49 @@ pub mod fry_bridge_solana {
 
         Ok(())
     }
+
+    // ------------------------------------------------------------------
+    // 11. Release SOL (cross-chain: Algorand burn → Solana release)
+    // ------------------------------------------------------------------
+    pub fn release_sol(
+        ctx: Context<ReleaseSol>,
+        nonce: u64,
+        amount: u64,
+    ) -> Result<()> {
+        require!(
+            ctx.accounts.relayer.key() == ctx.accounts.bridge_state.relayer,
+            BridgeError::Unauthorized
+        );
+        require!(!ctx.accounts.bridge_state.paused, BridgeError::Paused);
+
+        check_rate_limits(&mut ctx.accounts.bridge_state, amount)?;
+
+        require!(
+            ctx.accounts.sol_vault.to_account_info().lamports() >= amount,
+            BridgeError::InsufficientFunds
+        );
+
+        // Transfer SOL from vault to recipient
+        let vault_seeds = &[b"sol_vault".as_ref(), &[ctx.bumps.sol_vault]];
+        let signer = &[&vault_seeds[..]];
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.sol_vault.to_account_info(),
+                to: ctx.accounts.recipient.to_account_info(),
+            },
+            signer,
+        );
+        anchor_lang::system_program::transfer(cpi_ctx, amount)?;
+
+        emit!(ReleaseEvent {
+            recipient: ctx.accounts.recipient.key(),
+            amount,
+            nonce,
+        });
+
+        Ok(())
+    }
 }
 
 // ===================================================================
@@ -707,6 +750,42 @@ pub struct BurnWrapped<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+#[instruction(nonce: u64)]
+pub struct ReleaseSol<'info> {
+    #[account(mut)]
+    pub relayer: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"bridge_state"],
+        bump,
+    )]
+    pub bridge_state: Account<'info, BridgeState>,
+
+    #[account(
+        mut,
+        seeds = [b"sol_vault"],
+        bump,
+    )]
+    pub sol_vault: Account<'info, SolVault>,
+
+    /// CHECK: recipient receives SOL
+    #[account(mut)]
+    pub recipient: AccountInfo<'info>,
+
+    #[account(
+        init,
+        payer = relayer,
+        seeds = [b"release_record", recipient.key().as_ref(), &nonce.to_le_bytes()],
+        bump,
+        space = 8,
+    )]
+    pub release_record: Account<'info, ReleaseRecord>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // ===================================================================
 // Data structures
 // ===================================================================
@@ -756,6 +835,9 @@ pub struct LockRecord {
     pub consumed: bool,
 }
 
+#[account]
+pub struct ReleaseRecord {}
+
 // ===================================================================
 // Events
 // ===================================================================
@@ -791,6 +873,13 @@ pub struct BurnEvent {
     pub user: Pubkey,
     pub amount: u64,
     pub wrapped_mint: Pubkey,
+}
+
+#[event]
+pub struct ReleaseEvent {
+    pub recipient: Pubkey,
+    pub amount: u64,
+    pub nonce: u64,
 }
 
 // ===================================================================
