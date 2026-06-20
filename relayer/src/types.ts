@@ -25,4 +25,6 @@ export interface RelayerConfig {
   port: number;
   adminToken: string;
   pollIntervalMs: number;
+  fsolAsaId: string;
+  fry2AsaId: string;
 }
