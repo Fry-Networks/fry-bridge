@@ -35,19 +35,19 @@ async function executeCounterpart(ev: BridgeEvent): Promise<string | undefined> 
     if (ev.tokenAddress === SOL_MINT || ev.tokenAddress === '' || ev.tokenAddress === '11111111111111111111111111111111') {
       return await algorand.executeMintFsol(algoRecip, BigInt(ev.nonce), ev.amount);
     }
-    const asaId = BigInt(2485314946); // prototype mapping
+    const asaId = BigInt(config.fry2AsaId);
     return await algorand.executeReleaseAsa(algoRecip, asaId, BigInt(ev.nonce), ev.amount);
   }
 
   if (ev.chain === 'solana' && ev.direction === 'burn') {
     const recip = ev.userAddress;
-    const asaId = BigInt(2485314946);
+    const asaId = BigInt(config.fry2AsaId);
     return await algorand.executeReleaseAsa(recip, asaId, BigInt(ev.nonce), ev.amount);
   }
 
   if (ev.chain === 'algorand' && ev.direction === 'lock') {
     const asaId = BigInt(ev.tokenAddress);
-    if (asaId === 1105n) {
+    if (asaId === BigInt(config.fsolAsaId)) {
       throw new Error('Unsupported: fSOL has no Solana wrapped mint in prototype');
     }
     const fry2SolanaMint = process.env.FRY2_SOLANA_MINT;
