@@ -11,11 +11,12 @@ from algosdk.atomic_transaction_composer import (
     AccountTransactionSigner,
 )
 from algosdk.abi import Contract
+from algosdk import mnemonic
 
-ALGOD_URL = "http://localhost:4001"
-ALGOD_TOKEN = "a" * 64
-KMD_URL = "http://localhost:4002"
-KMD_TOKEN = "a" * 64
+ALGOD_URL = os.environ.get("ALGOD_URL", "http://localhost:4001")
+ALGOD_TOKEN = os.environ.get("ALGOD_TOKEN", "a" * 64)
+KMD_URL = os.environ.get("KMD_URL", "http://localhost:4002")
+KMD_TOKEN = os.environ.get("KMD_TOKEN", "a" * 64)
 APPROVAL_TEAL = "algorand/approval.teal"
 CLEAR_TEAL = "algorand/clear.teal"
 
@@ -233,6 +234,8 @@ def main():
     print(f"fSOL_ASA_ID={fsol_asa_id}")
     print(f"FRY20_ASA_ID={fry_asa_id}")
     print(f"Relayer={deployer_addr}")
+    deployer_mnemonic = mnemonic.from_private_key(deployer_pk)
+    print(f"Mnemonic={deployer_mnemonic}")
     print("================================")
 
 

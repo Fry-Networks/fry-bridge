@@ -20,8 +20,8 @@ const SOL_KP_PATH = process.env.SOLANA_KEYPAIR_PATH;
 const ALGO_URL = process.env.ALGOD_URL || 'http://127.0.0.1:4001';
 const ALGO_TOKEN = process.env.ALGOD_TOKEN || '';
 const ALGO_APP = Number(process.env.ALGO_APP_ID || '1106');
-const FRY2_ASA = 1113;
-const FSOL_ASA = 1105;
+const FRY2_ASA = Number(process.env.FRY2_ASA_ID || '1113');
+const FSOL_ASA = Number(process.env.FSOL_ASA_ID || '1105');
 const RELAY_PORT = Number(process.env.PORT || '8090');
 const ADMIN_TOK = process.env.RELAYER_ADMIN_TOKEN || 'changeme';
 
