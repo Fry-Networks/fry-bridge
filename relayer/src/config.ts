@@ -16,7 +16,7 @@ export const config: RelayerConfig = {
   algoMnemonic: process.env.ALGO_MNEMONIC || '',
   dbPath: process.env.DB_PATH || './relayer.db',
   port: Number(process.env.PORT || '8090'),
-  adminToken: process.env.RELAYER_ADMIN_TOKEN || 'changeme',
+  adminToken: requireEnv('RELAYER_ADMIN_TOKEN'),
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS || '5000'),
   fsolAsaId: process.env.FSOL_ASA_ID || '1105',
   fry2AsaId: process.env.FRY2_ASA_ID || '2485314946',
