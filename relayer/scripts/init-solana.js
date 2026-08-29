@@ -1,11 +1,13 @@
 const web3 = require('@solana/web3.js');
 const splToken = require('@solana/spl-token');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const PROGRAM_ID = new web3.PublicKey('6SywTFsyXStoLJUSrsSzuupzK5SYEsTj5Jg9p9qr3vXz');
 const TOKEN_PROGRAM_ID = splToken.TOKEN_PROGRAM_ID;
 const ASSOCIATED_TOKEN_PROGRAM_ID = splToken.ASSOCIATED_TOKEN_PROGRAM_ID;
-const KEYPAIR_PATH = 'REDACTED_ROTATE_ME/.config/solana/id.json';
+const KEYPAIR_PATH = process.env.SOLANA_KEYPAIR_PATH || path.join(os.homedir(), '.config', 'solana', 'id.json');
 
 // Discriminators
 const INITIALIZE_DISC = Buffer.from([175,175,109,31,13,152,155,237]);
