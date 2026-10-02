@@ -26,5 +26,13 @@
     "jest": "^29.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "toml": "^4.2.0",
+    "jayson": "^5.0.0",
+    "qs": "^6.16.0",
+    "js-yaml": "^3.15.2",
+    "browserslist": "^4.28.7",
+    "baseline-browser-mapping": "^2.11.0"
   }
 }
